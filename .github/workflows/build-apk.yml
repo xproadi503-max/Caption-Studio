@@ -1,7 +1,5 @@
 name: Build Flutter APK
 
-# Runs automatically every time you push to main, and can also be
-# triggered manually from the Actions tab ("Run workflow" button).
 on:
   push:
     branches: [ main ]
@@ -27,15 +25,26 @@ jobs:
           flutter-version: '3.32.0'
           channel: 'stable'
 
-      # This repo ships lib/ + pubspec.yaml only (no android/ios scaffold),
-      # so we generate a fresh Flutter project here and merge our source
-      # into it before building — same idea as the manual Codespaces steps.
       - name: Create Flutter scaffold and merge project source
         run: |
           flutter create caption_studio
           cp -r lib/* caption_studio/lib/
           cp pubspec.yaml caption_studio/pubspec.yaml
           if [ -d assets ]; then cp -r assets caption_studio/assets; fi
+
+      - name: Set minimum Android SDK version (required by ffmpeg_kit_flutter_new)
+        run: |
+          GRADLE_FILE=caption_studio/android/app/build.gradle
+          GRADLE_KTS_FILE=caption_studio/android/app/build.gradle.kts
+          if [ -f "$GRADLE_FILE" ]; then
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/' "$GRADLE_FILE"
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' "$GRADLE_FILE"
+            grep -n "minSdk" "$GRADLE_FILE" || true
+          fi
+          if [ -f "$GRADLE_KTS_FILE" ]; then
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' "$GRADLE_KTS_FILE"
+            grep -n "minSdk" "$GRADLE_KTS_FILE" || true
+          fi
 
       - name: Add required Android permissions
         run: |
@@ -51,8 +60,6 @@ jobs:
         working-directory: caption_studio
         run: flutter build apk --release
 
-      # Uploads the APK as a downloadable artifact on this workflow run's
-      # summary page (Actions tab -> this run -> "Artifacts" section).
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
