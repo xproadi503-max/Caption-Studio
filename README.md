@@ -11,14 +11,38 @@ lib/
   services/        transcription (AssemblyAI), audio extraction, ASS subtitle
                     generation, video export (FFmpeg burn-in)
   providers/       app state (ChangeNotifier)
-  screens/         Home → Template Picker → Preview → Export
-  widgets/         live animated caption overlay for the preview screen
+  screens/         Home → Template Picker → Preview → Caption Editor → Export
+  widgets/         live animated caption overlay for the preview/editor screens
   main.dart
 pubspec.yaml
 ```
-12 caption templates are predefined in `lib/models/caption_templates.dart`
-(word-highlight/karaoke, pop, bounce, typewriter, slide, fade, static).
-Add more by adding entries to that list — no other code changes needed.
+**30+ caption templates** are predefined in `lib/models/caption_templates.dart`,
+covering every animation style (word-highlight/karaoke, pop, bounce,
+typewriter, slide-up, fade, static) crossed with a range of color themes
+(neon, pastel, gold, monochrome, etc — similar in spirit to Zeemo/CapCut's
+template libraries). Add more by appending entries to that list — no
+other code changes needed.
+
+**Caption editor (new):** from the Preview screen, tap "Edit caption text
+& position" to:
+- Drag any caption line directly on the video to place it exactly where
+  you want (per line, not just top/center/bottom)
+- Tap a line in the list to jump the video to that moment and select it
+- Edit the text of any line inline to fix transcription mistakes
+- Tap the reset icon next to a line to clear its custom position
+
+These edits are respected in the final exported video (positions and
+corrected text both get baked into the burned-in captions).
+
+## 0. Set your API key once (optional but recommended)
+Open `lib/screens/home_screen.dart` and find this near the top:
+```dart
+const String kDefaultApiKey = '';
+```
+Paste your AssemblyAI key between the quotes (see step 3 below to get
+one). The app will then pre-fill it automatically every time — you
+won't need to type it in the app each time. This stays local to your
+own copy of the code; never commit a real key to a public repo.
 
 ## 1. Setup (do this first, only once)
 
