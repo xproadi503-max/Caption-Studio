@@ -9,6 +9,11 @@ import '../services/transcription_service.dart';
 import '../utils/permissions.dart';
 import 'template_picker_screen.dart';
 
+// PASTE YOUR OWN ASSEMBLYAI API KEY BELOW (between the quotes).
+// Once set, the app pre-fills it automatically so you never have to
+// type it again. Get a free key at https://www.assemblyai.com/
+const String kDefaultApiKey = 'ed4b43fd15ec46e48c00eb95e2aa18aa';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -24,7 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     final project = context.read<ProjectProvider>();
     project.loadApiKey().then((_) {
-      _apiKeyController.text = project.apiKey ?? '';
+      _apiKeyController.text = project.apiKey?.isNotEmpty == true
+          ? project.apiKey!
+          : kDefaultApiKey;
     });
   }
 
@@ -50,9 +57,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final controller = VideoPlayerController.file(File(picked.path));
     await controller.initialize();
     final durationMs = controller.value.duration.inMilliseconds;
+    final size = controller.value.size;
     await controller.dispose();
 
-    project.setVideo(picked.path, durationMs);
+    project.setVideo(
+      picked.path,
+      durationMs,
+      width: size.width.round(),
+      height: size.height.round(),
+    );
     await _runPipeline(context, picked.path);
   }
 

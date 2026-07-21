@@ -34,6 +34,10 @@ class _ExportScreenState extends State<ExportScreen> {
       final assContent = AssGenerator.generate(
         words: project.words,
         template: project.selectedTemplate,
+        positionOverrides: project.linePositionOverrides,
+        textOverrides: project.lineTextOverrides,
+        videoWidth: project.videoWidth,
+        videoHeight: project.videoHeight,
       );
       final tempDir = await getTemporaryDirectory();
       final assFile = File('${tempDir.path}/captions_${DateTime.now().millisecondsSinceEpoch}.ass');

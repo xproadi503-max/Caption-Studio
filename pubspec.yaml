@@ -20,7 +20,7 @@ dependencies:
   http: ^1.2.2
 
   # FFmpeg - maintained fork (original ffmpeg_kit_flutter is discontinued)
-  ffmpeg_kit_flutter_new: ^4.5.1
+  ffmpeg_kit_flutter_new: ^2.0.1
 
   # Storage / permissions / paths
   path_provider: ^2.1.4

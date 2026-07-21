@@ -1,5 +1,7 @@
 name: Build Flutter APK
 
+# Runs automatically every time you push to main, and can also be
+# triggered manually from the Actions tab ("Run workflow" button).
 on:
   push:
     branches: [ main ]
@@ -25,6 +27,9 @@ jobs:
           flutter-version: '3.32.0'
           channel: 'stable'
 
+      # This repo ships lib/ + pubspec.yaml only (no android/ios scaffold),
+      # so we generate a fresh Flutter project here and merge our source
+      # into it before building — same idea as the manual Codespaces steps.
       - name: Create Flutter scaffold and merge project source
         run: |
           flutter create caption_studio
@@ -60,6 +65,8 @@ jobs:
         working-directory: caption_studio
         run: flutter build apk --release
 
+      # Uploads the APK as a downloadable artifact on this workflow run's
+      # summary page (Actions tab -> this run -> "Artifacts" section).
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

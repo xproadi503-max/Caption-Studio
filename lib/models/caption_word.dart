@@ -50,6 +50,25 @@ class CaptionLine {
   int get endMs => words.last.endMs;
   String get fullText => words.map((w) => w.text).join(' ');
 
+  /// Returns a new [CaptionLine] with the same overall start/end time but
+  /// with [newText]'s words evenly spaced across that duration. Used when
+  /// the user manually edits a caption line's text — we don't have real
+  /// per-word timing for the corrected text, so an even split is the
+  /// simplest reasonable approximation.
+  CaptionLine withTextOverride(String newText) {
+    final newWords = newText.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (newWords.isEmpty) return this;
+    final totalMs = endMs - startMs;
+    final perWordMs = (totalMs / newWords.length).round().clamp(1, totalMs);
+    final rebuilt = <CaptionWord>[];
+    for (int i = 0; i < newWords.length; i++) {
+      final wordStart = startMs + (i * perWordMs);
+      final wordEnd = (i == newWords.length - 1) ? endMs : wordStart + perWordMs;
+      rebuilt.add(CaptionWord(text: newWords[i], startMs: wordStart, endMs: wordEnd));
+    }
+    return CaptionLine(rebuilt);
+  }
+
   /// Groups a flat list of words into caption lines, breaking on
   /// [maxWordsPerLine] words or [maxGapMs] of silence between words.
   static List<CaptionLine> groupWords(
@@ -82,5 +101,20 @@ class CaptionLine {
       lines.add(CaptionLine(List.of(current)));
     }
     return lines;
+  }
+
+  /// Applies a lineIndex -> replacement text map to a list of caption
+  /// lines, returning a new list with edited lines' words re-timed evenly
+  /// across their original duration. Lines without an override are
+  /// returned unchanged.
+  static List<CaptionLine> applyTextOverrides(
+    List<CaptionLine> lines,
+    Map<int, String> textOverrides,
+  ) {
+    return List.generate(lines.length, (i) {
+      final override = textOverrides[i];
+      if (override == null || override.trim().isEmpty) return lines[i];
+      return lines[i].withTextOverride(override);
+    });
   }
 }

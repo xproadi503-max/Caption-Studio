@@ -22,6 +22,8 @@ enum PipelineStage {
 class ProjectProvider extends ChangeNotifier {
   String? videoPath;
   int videoDurationMs = 0;
+  int videoWidth = 1080;
+  int videoHeight = 1920;
   List<CaptionWord> words = [];
   CaptionTemplate selectedTemplate = CaptionTemplates.all.first;
   PipelineStage stage = PipelineStage.idle;
@@ -30,6 +32,29 @@ class ProjectProvider extends ChangeNotifier {
   String? exportedVideoPath;
   String? errorMessage;
   String? _apiKey;
+
+  // Per-caption-line manual overrides, keyed by line index (from
+  // CaptionLine.groupWords with default grouping settings). Position is
+  // stored as a fractional Offset (0.0-1.0 for both dx/dy) so it scales
+  // to any video resolution/aspect ratio. Text overrides let the user
+  // fix transcription mistakes for that line.
+  final Map<int, Offset> linePositionOverrides = {};
+  final Map<int, String> lineTextOverrides = {};
+
+  void setLinePosition(int lineIndex, Offset fractionalOffset) {
+    linePositionOverrides[lineIndex] = fractionalOffset;
+    notifyListeners();
+  }
+
+  void clearLinePosition(int lineIndex) {
+    linePositionOverrides.remove(lineIndex);
+    notifyListeners();
+  }
+
+  void setLineText(int lineIndex, String text) {
+    lineTextOverrides[lineIndex] = text;
+    notifyListeners();
+  }
 
   static const _prefsKey = 'assemblyai_api_key';
 
@@ -48,12 +73,16 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setVideo(String path, int durationMs) {
+  void setVideo(String path, int durationMs, {int? width, int? height}) {
     videoPath = path;
     videoDurationMs = durationMs;
+    if (width != null && width > 0) videoWidth = width;
+    if (height != null && height > 0) videoHeight = height;
     words = [];
     exportedVideoPath = null;
     stage = PipelineStage.idle;
+    linePositionOverrides.clear();
+    lineTextOverrides.clear();
     notifyListeners();
   }
 

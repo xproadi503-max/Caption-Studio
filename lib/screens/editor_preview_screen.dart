@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../models/caption_word.dart';
 import '../providers/project_provider.dart';
 import '../widgets/caption_preview_overlay.dart';
+import 'caption_editor_screen.dart';
 import 'export_screen.dart';
 
 class EditorPreviewScreen extends StatefulWidget {
@@ -94,6 +95,23 @@ class _EditorPreviewScreenState extends State<EditorPreviewScreen> {
                       },
                     ),
                   ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.edit_note),
+                      label: const Text('Edit caption text & position'),
+                      onPressed: () {
+                        _controller?.pause();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const CaptionEditorScreen()),
+                        );
+                      },
+                    ),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16),

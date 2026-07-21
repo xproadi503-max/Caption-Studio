@@ -22,8 +22,13 @@ class AssGenerator {
     int maxWordsPerLine = 5,
     int videoWidth = 1080,
     int videoHeight = 1920,
+    Map<int, Offset>? positionOverrides,
+    Map<int, String>? textOverrides,
   }) {
-    final lines = CaptionLine.groupWords(words, maxWordsPerLine: maxWordsPerLine);
+    var lines = CaptionLine.groupWords(words, maxWordsPerLine: maxWordsPerLine);
+    if (textOverrides != null && textOverrides.isNotEmpty) {
+      lines = CaptionLine.applyTextOverrides(lines, textOverrides);
+    }
     final buffer = StringBuffer();
 
     buffer.writeln(_header(videoWidth, videoHeight));
@@ -32,8 +37,14 @@ class AssGenerator {
     buffer.writeln(
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
 
-    for (final line in lines) {
-      buffer.write(_eventsForLine(line, template));
+    for (int i = 0; i < lines.length; i++) {
+      buffer.write(_eventsForLine(
+        lines[i],
+        template,
+        positionOverride: positionOverrides?[i],
+        videoWidth: videoWidth,
+        videoHeight: videoHeight,
+      ));
     }
 
     return buffer.toString();
@@ -103,9 +114,18 @@ Style: Base,${t.fontFamily},$fontSize,$primary,$highlight,$outline,$back,$bold,0
   /// Escapes ASS special characters in plain word text.
   static String _escape(String text) => text.replaceAll('{', '(').replaceAll('}', ')');
 
-  static String _eventsForLine(CaptionLine line, CaptionTemplate t) {
+  static String _eventsForLine(
+    CaptionLine line,
+    CaptionTemplate t, {
+    Offset? positionOverride,
+    int videoWidth = 1080,
+    int videoHeight = 1920,
+  }) {
     final buffer = StringBuffer();
     final words = line.words;
+    final posTag = positionOverride != null
+        ? '{\\an5\\pos(${(positionOverride.dx * videoWidth).round()},${(positionOverride.dy * videoHeight).round()})}'
+        : '';
 
     for (int i = 0; i < words.length; i++) {
       final active = words[i];
@@ -113,7 +133,7 @@ Style: Base,${t.fontFamily},$fontSize,$primary,$highlight,$outline,$back,$bold,0
       // Each word stays "active" until the next word starts, or line end.
       final end = (i < words.length - 1) ? words[i + 1].startMs : line.endMs + 200;
 
-      final text = _buildLineText(words, i, t);
+      final text = posTag + _buildLineText(words, i, t);
       buffer.writeln(
           'Dialogue: 0,${_timestamp(start)},${_timestamp(end)},Base,,0,0,0,,$text');
     }

@@ -21,13 +21,6 @@ class VideoExportService {
     final outputPath =
         '${outputDir.path}/caption_export_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-    // ass filter path needs escaping on some platforms (colons on Windows,
-    // special chars in path). Wrapping in single quotes handles most cases.
-    final escapedAssPath = assFilePath.replaceAll("'", r"\'");
-
-    final command =
-        '-i "$videoPath" -vf "ass=\'$escapedAssPath\'" -c:v libx264 -preset fast -crf 20 -c:a copy "$outputPath"';
-
     if (onProgress != null && durationMs > 0) {
       FFmpegKitConfig.enableStatisticsCallback((Statistics stats) {
         final timeMs = stats.getTime();
@@ -38,7 +31,24 @@ class VideoExportService {
       });
     }
 
-    final session = await FFmpegKit.execute(command);
+    // IMPORTANT: pass arguments as a list (executeWithArguments) rather
+    // than a single command string. FFmpegKit's own string tokenizer can
+    // mishandle nested quotes in filter args like ass='/path/to/file.ass'
+    // on Android, which silently drops the subtitle filter (video exports
+    // fine, but with no captions burned in, and no error surfaced).
+    // Passing arguments directly as array elements avoids that entirely.
+    final arguments = <String>[
+      '-i', videoPath,
+      '-vf', 'ass=$assFilePath',
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '20',
+      '-c:a', 'copy',
+      '-y',
+      outputPath,
+    ];
+
+    final session = await FFmpegKit.executeWithArguments(arguments);
     final returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {

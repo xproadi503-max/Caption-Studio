@@ -14,12 +14,19 @@ class AudioExtractor {
     final outputPath =
         '${tempDir.path}/extracted_audio_${DateTime.now().millisecondsSinceEpoch}.mp3';
 
-    // -vn: no video, -ac 1: mono, -ar 16000: 16kHz sample rate is plenty
-    // for speech recognition and keeps the upload small.
-    final command =
-        '-i "$videoPath" -vn -ac 1 -ar 16000 -b:a 64k "$outputPath"';
+    // Using executeWithArguments (array form) instead of a single command
+    // string avoids any quote/tokenizing ambiguity around file paths.
+    final arguments = <String>[
+      '-i', videoPath,
+      '-vn',
+      '-ac', '1',
+      '-ar', '16000',
+      '-b:a', '64k',
+      '-y',
+      outputPath,
+    ];
 
-    final session = await FFmpegKit.execute(command);
+    final session = await FFmpegKit.executeWithArguments(arguments);
     final returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {

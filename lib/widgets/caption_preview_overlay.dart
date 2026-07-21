@@ -7,16 +7,26 @@ import '../models/caption_style.dart';
 /// look once burned into the exported video via the ASS generator.
 /// This is a live Flutter re-implementation of the animation styles
 /// (not a literal ASS renderer), so it stays smooth during scrubbing.
+///
+/// When [onPositionChanged] is provided, the caption becomes draggable:
+/// the user can drag it anywhere over the video and the new fractional
+/// position (0.0-1.0 for both axes) is reported back, letting the
+/// editor screen store a per-line custom position (Zeemo-style manual
+/// caption placement).
 class CaptionPreviewOverlay extends StatelessWidget {
   final List<CaptionLine> lines;
   final int positionMs;
   final CaptionTemplate template;
+  final Offset? positionOverride; // fractional 0-1, null = use template default
+  final ValueChanged<Offset>? onPositionChanged;
 
   const CaptionPreviewOverlay({
     super.key,
     required this.lines,
     required this.positionMs,
     required this.template,
+    this.positionOverride,
+    this.onPositionChanged,
   });
 
   CaptionLine? get _activeLine {
@@ -46,35 +56,93 @@ class CaptionPreviewOverlay extends StatelessWidget {
     if (line == null) return const SizedBox.shrink();
     final activeIndex = _activeWordIndex;
 
-    return Align(
-      alignment: template.position,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-        child: Container(
-          padding: template.backgroundColor != null
-              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
-              : EdgeInsets.zero,
-          decoration: template.backgroundColor != null
-              ? BoxDecoration(
-                  color: template.backgroundColor,
-                  borderRadius: BorderRadius.circular(10),
-                )
-              : null,
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 6,
-            runSpacing: 4,
-            children: List.generate(line.words.length, (i) {
-              final visible = _isWordVisible(i, activeIndex);
-              if (!visible) return const SizedBox.shrink();
-              return _AnimatedWord(
-                text: line.words[i].text,
-                isActive: i == activeIndex,
-                template: template,
-              );
-            }),
-          ),
+    final captionContent = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      child: Container(
+        padding: template.backgroundColor != null
+            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+            : EdgeInsets.zero,
+        decoration: template.backgroundColor != null
+            ? BoxDecoration(
+                color: template.backgroundColor,
+                borderRadius: BorderRadius.circular(10),
+              )
+            : null,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 6,
+          runSpacing: 4,
+          children: List.generate(line.words.length, (i) {
+            final visible = _isWordVisible(i, activeIndex);
+            if (!visible) return const SizedBox.shrink();
+            return _AnimatedWord(
+              text: line.words[i].text,
+              isActive: i == activeIndex,
+              template: template,
+            );
+          }),
         ),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+
+        Widget positioned;
+        if (positionOverride != null) {
+          positioned = Positioned(
+            left: (positionOverride!.dx * width) - (width * 0.4),
+            top: (positionOverride!.dy * height) - 24,
+            width: width * 0.8,
+            child: captionContent,
+          );
+        } else {
+          positioned = Positioned.fill(
+            child: Align(alignment: template.position, child: captionContent),
+          );
+        }
+
+        if (onPositionChanged == null) {
+          return Stack(children: [positioned]);
+        }
+
+        // Draggable mode: wrap in a gesture detector covering the caption
+        // area so the user can grab and reposition it anywhere on screen.
+        return Stack(
+          children: [
+            Positioned(
+              left: positionOverride != null
+                  ? (positionOverride!.dx * width) - (width * 0.4)
+                  : null,
+              top: positionOverride != null
+                  ? (positionOverride!.dy * height) - 24
+                  : null,
+              width: width * 0.8,
+              child: positionOverride == null
+                  ? Align(alignment: template.position, child: _wrapDraggable(captionContent, width, height))
+                  : _wrapDraggable(captionContent, width, height),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _wrapDraggable(Widget child, double width, double height) {
+    return GestureDetector(
+      onPanUpdate: (details) {
+        final dx = ((positionOverride?.dx ?? 0.5) * width + details.delta.dx) / width;
+        final dy = ((positionOverride?.dy ?? 0.8) * height + details.delta.dy) / height;
+        onPositionChanged?.call(Offset(dx.clamp(0.05, 0.95), dy.clamp(0.05, 0.95)));
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.blueAccent.withOpacity(0.6), width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: child,
       ),
     );
   }
